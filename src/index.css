@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+html {
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo,
+    system-ui, sans-serif;
+}

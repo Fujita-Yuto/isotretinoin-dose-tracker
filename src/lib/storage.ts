@@ -57,6 +57,103 @@ export function clearData(): void {
   }
 }
 
+// ---- エクスポート / インポート（機種変更・バックアップ用） ----
+
+const EXPORT_APP_ID = "isotretinoin-tracker";
+const EXPORT_VERSION = 1;
+
+export function exportDataJson(data: AppData): string {
+  return JSON.stringify(
+    {
+      app: EXPORT_APP_ID,
+      version: EXPORT_VERSION,
+      exportedAt: new Date().toISOString(),
+      doses: data.doses,
+      weights: data.weights,
+      settings: data.settings,
+    },
+    null,
+    2
+  );
+}
+
+export type ImportResult = { ok: true; data: AppData } | { ok: false; error: string };
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** エクスポートしたJSON文字列を検証しつつ AppData に戻す */
+export function parseImportedJson(json: string): ImportResult {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return { ok: false, error: "ファイルをJSONとして読み込めませんでした" };
+  }
+  if (typeof raw !== "object" || raw === null) {
+    return { ok: false, error: "ファイルの形式が正しくありません" };
+  }
+  const obj = raw as Record<string, unknown>;
+  if (obj.app !== EXPORT_APP_ID) {
+    return { ok: false, error: "このアプリのバックアップファイルではないようです" };
+  }
+
+  const doses: DoseRecord[] = [];
+  if (Array.isArray(obj.doses)) {
+    for (const d of obj.doses as unknown[]) {
+      if (typeof d !== "object" || d === null) continue;
+      const rec = d as Record<string, unknown>;
+      if (
+        typeof rec.startDate === "string" &&
+        DATE_RE.test(rec.startDate) &&
+        typeof rec.doseMgPerDay === "number" &&
+        Number.isFinite(rec.doseMgPerDay) &&
+        rec.doseMgPerDay >= 0
+      ) {
+        doses.push({
+          id: typeof rec.id === "string" && rec.id !== "" ? rec.id : newId(),
+          startDate: rec.startDate,
+          doseMgPerDay: rec.doseMgPerDay,
+        });
+      }
+    }
+  }
+
+  const weights: WeightRecord[] = [];
+  if (Array.isArray(obj.weights)) {
+    for (const w of obj.weights as unknown[]) {
+      if (typeof w !== "object" || w === null) continue;
+      const rec = w as Record<string, unknown>;
+      if (
+        typeof rec.date === "string" &&
+        DATE_RE.test(rec.date) &&
+        typeof rec.weightKg === "number" &&
+        Number.isFinite(rec.weightKg) &&
+        rec.weightKg > 0
+      ) {
+        weights.push({
+          id: typeof rec.id === "string" && rec.id !== "" ? rec.id : newId(),
+          date: rec.date,
+          weightKg: rec.weightKg,
+        });
+      }
+    }
+  }
+
+  const settings = obj.settings as Record<string, unknown> | undefined;
+  const targetMgPerKg =
+    settings != null &&
+    typeof settings.targetMgPerKg === "number" &&
+    Number.isFinite(settings.targetMgPerKg) &&
+    settings.targetMgPerKg > 0
+      ? settings.targetMgPerKg
+      : DEFAULT_DATA.settings.targetMgPerKg;
+
+  return {
+    ok: true,
+    data: { doses, weights, settings: { targetMgPerKg }, disclaimerAccepted: true },
+  };
+}
+
 export function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()

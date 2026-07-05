@@ -1,15 +1,22 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { todayStr } from "../lib/calc";
+import { exportDataJson, parseImportedJson, type AppData } from "../lib/storage";
 
 interface Props {
-  targetMgPerKg: number;
+  data: AppData;
   onChangeTarget: (target: number) => void;
+  onImport: (data: AppData) => void;
   onReset: () => void;
 }
 
-export default function SettingsTab({ targetMgPerKg, onChangeTarget, onReset }: Props) {
-  const [targetInput, setTargetInput] = useState(String(targetMgPerKg));
+export default function SettingsTab({ data, onChangeTarget, onImport, onReset }: Props) {
+  const [targetInput, setTargetInput] = useState(String(data.settings.targetMgPerKg));
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [importMessage, setImportMessage] = useState<{ type: "ok" | "error"; text: string } | null>(
+    null
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const saveTarget = () => {
     const value = Number(targetInput);
@@ -21,6 +28,35 @@ export default function SettingsTab({ targetMgPerKg, onChangeTarget, onReset }: 
     onChangeTarget(value);
     setError("");
     setSaved(true);
+  };
+
+  const handleExport = () => {
+    const blob = new Blob([exportDataJson(data)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `isotretinoin-data-${todayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = async (file: File) => {
+    const text = await file.text();
+    const result = parseImportedJson(text);
+    if (!result.ok) {
+      setImportMessage({ type: "error", text: result.error });
+      return;
+    }
+    const ok = window.confirm(
+      `現在の記録を、読み込んだ内容（服用記録 ${result.data.doses.length} 件・体重 ${result.data.weights.length} 件）で置き換えます。よろしいですか？`
+    );
+    if (!ok) {
+      setImportMessage(null);
+      return;
+    }
+    onImport(result.data);
+    setTargetInput(String(result.data.settings.targetMgPerKg));
+    setImportMessage({ type: "ok", text: "データを読み込みました" });
   };
 
   const handleReset = () => {
@@ -69,6 +105,47 @@ export default function SettingsTab({ targetMgPerKg, onChangeTarget, onReset }: 
           >
             保存する
           </button>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-bold text-lg">バックアップ</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          記録をファイル（JSON）として保存できます。機種変更やブラウザのデータ消去に備えて、定期的にエクスポートしておくと安心です。新しい端末ではこのファイルをインポートすると記録を引き継げます。
+        </p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+          <button
+            onClick={handleExport}
+            className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl active:bg-blue-700"
+          >
+            エクスポート（ファイルに保存）
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full border border-blue-300 text-blue-700 font-bold py-3 rounded-xl active:bg-blue-50"
+          >
+            インポート（ファイルから復元）
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleImportFile(file);
+              e.target.value = "";
+            }}
+          />
+          {importMessage && (
+            <p
+              className={`text-sm ${
+                importMessage.type === "ok" ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {importMessage.text}
+            </p>
+          )}
         </div>
       </section>
 

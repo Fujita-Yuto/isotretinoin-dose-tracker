@@ -60,10 +60,11 @@ export default function App() {
         )}
         {tab === "settings" && (
           <SettingsTab
-            targetMgPerKg={data.settings.targetMgPerKg}
+            data={data}
             onChangeTarget={(targetMgPerKg) =>
               setData((d) => ({ ...d, settings: { ...d.settings, targetMgPerKg } }))
             }
+            onImport={(imported) => setData(imported)}
             onReset={handleReset}
           />
         )}

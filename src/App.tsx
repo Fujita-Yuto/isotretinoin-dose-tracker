@@ -4,19 +4,26 @@ import { loadData, saveData, clearData, DEFAULT_DATA, type AppData } from "./lib
 import DisclaimerModal from "./components/DisclaimerModal";
 import HomeTab from "./components/HomeTab";
 import RecordsTab from "./components/RecordsTab";
+import CalendarTab from "./components/CalendarTab";
 import SettingsTab from "./components/SettingsTab";
 
-type Tab = "home" | "records" | "settings";
+type Tab = "home" | "records" | "calendar" | "settings";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "home", label: "ホーム", icon: "🏠" },
   { key: "records", label: "記録", icon: "📝" },
+  { key: "calendar", label: "カレンダー", icon: "📅" },
   { key: "settings", label: "設定", icon: "⚙️" },
 ];
 
+function initialTab(): Tab {
+  const hash = window.location.hash.slice(1);
+  return hash === "records" || hash === "calendar" || hash === "settings" ? hash : "home";
+}
+
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadData());
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const today = todayStr();
 
   useEffect(() => {
@@ -27,6 +34,15 @@ export default function App() {
     clearData();
     setData({ ...DEFAULT_DATA, disclaimerAccepted: true });
     setTab("home");
+  };
+
+  const toggleMissed = (date: string) => {
+    setData((d) => ({
+      ...d,
+      missedDates: d.missedDates.includes(date)
+        ? d.missedDates.filter((m) => m !== date)
+        : [...d.missedDates, date],
+    }));
   };
 
   return (
@@ -44,6 +60,8 @@ export default function App() {
           <HomeTab
             doses={data.doses}
             weights={data.weights}
+            missedDates={data.missedDates}
+            calcMode={data.settings.calcMode}
             targetMgPerKg={data.settings.targetMgPerKg}
             today={today}
             onGoToRecords={() => setTab("records")}
@@ -58,11 +76,22 @@ export default function App() {
             onChangeWeights={(weights) => setData((d) => ({ ...d, weights }))}
           />
         )}
+        {tab === "calendar" && (
+          <CalendarTab
+            doses={data.doses}
+            missedDates={data.missedDates}
+            today={today}
+            onToggleMissed={toggleMissed}
+          />
+        )}
         {tab === "settings" && (
           <SettingsTab
             data={data}
             onChangeTarget={(targetMgPerKg) =>
               setData((d) => ({ ...d, settings: { ...d.settings, targetMgPerKg } }))
+            }
+            onChangeCalcMode={(calcMode) =>
+              setData((d) => ({ ...d, settings: { ...d.settings, calcMode } }))
             }
             onImport={(imported) => setData(imported)}
             onReset={handleReset}
@@ -82,17 +111,19 @@ export default function App() {
       </main>
 
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-10">
-        <div className="max-w-xl mx-auto grid grid-cols-3">
+        <div className="max-w-xl mx-auto grid grid-cols-4">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`py-3 text-sm flex flex-col items-center gap-0.5 ${
+              className={`py-3 text-xs flex flex-col items-center gap-0.5 ${
                 tab === t.key ? "text-blue-600 font-bold" : "text-slate-500"
               }`}
               aria-current={tab === t.key ? "page" : undefined}
             >
-              <span aria-hidden="true">{t.icon}</span>
+              <span aria-hidden="true" className="text-base">
+                {t.icon}
+              </span>
               {t.label}
             </button>
           ))}

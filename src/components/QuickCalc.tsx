@@ -26,7 +26,7 @@ export default function QuickCalc() {
       </p>
 
       <div className="grid grid-cols-3 gap-2">
-        <div>
+        <div className="min-w-0">
           <label htmlFor="qc-weight" className="block text-xs font-medium mb-1">
             体重 (kg)
           </label>
@@ -42,7 +42,7 @@ export default function QuickCalc() {
             className={inputClass}
           />
         </div>
-        <div>
+        <div className="min-w-0">
           <label htmlFor="qc-dose" className="block text-xs font-medium mb-1">
             1日量 (mg)
           </label>
@@ -58,7 +58,7 @@ export default function QuickCalc() {
             className={inputClass}
           />
         </div>
-        <div>
+        <div className="min-w-0">
           <label htmlFor="qc-days" className="block text-xs font-medium mb-1">
             服用日数 (日)
           </label>

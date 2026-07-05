@@ -1,15 +1,36 @@
 import { useRef, useState } from "react";
-import { todayStr } from "../lib/calc";
+import { todayStr, type CalcMode } from "../lib/calc";
 import { exportDataJson, parseImportedJson, type AppData } from "../lib/storage";
 
 interface Props {
   data: AppData;
   onChangeTarget: (target: number) => void;
+  onChangeCalcMode: (mode: CalcMode) => void;
   onImport: (data: AppData) => void;
   onReset: () => void;
 }
 
-export default function SettingsTab({ data, onChangeTarget, onImport, onReset }: Props) {
+const CALC_MODES: { value: CalcMode; label: string; description: string }[] = [
+  {
+    value: "latest",
+    label: "シンプル（最新の体重で計算）",
+    description: "服用総量を最新の体重で割ります。体重変動が小さい場合はこちらで十分です。",
+  },
+  {
+    value: "period",
+    label: "厳密（期間ごとの体重で計算）",
+    description:
+      "1日ごとに「その日の1日量 ÷ その時点の体重」を積み上げます。治療中に体重が大きく変わった場合により正確です。",
+  },
+];
+
+export default function SettingsTab({
+  data,
+  onChangeTarget,
+  onChangeCalcMode,
+  onImport,
+  onReset,
+}: Props) {
   const [targetInput, setTargetInput] = useState(String(data.settings.targetMgPerKg));
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -105,6 +126,34 @@ export default function SettingsTab({ data, onChangeTarget, onImport, onReset }:
           >
             保存する
           </button>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-bold text-lg">計算モード</h2>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2" role="radiogroup" aria-label="計算モード">
+          {CALC_MODES.map((mode) => {
+            const selected = data.settings.calcMode === mode.value;
+            return (
+              <button
+                key={mode.value}
+                role="radio"
+                aria-checked={selected}
+                onClick={() => onChangeCalcMode(mode.value)}
+                className={`w-full text-left rounded-xl border p-3 ${
+                  selected
+                    ? "border-blue-500 ring-1 ring-blue-300 bg-blue-50"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <p className={`text-sm font-bold ${selected ? "text-blue-700" : "text-slate-700"}`}>
+                  {selected ? "● " : "○ "}
+                  {mode.label}
+                </p>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">{mode.description}</p>
+              </button>
+            );
+          })}
         </div>
       </section>
 

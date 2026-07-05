@@ -1,17 +1,22 @@
 import {
-  calcCumulativeMgPerKg,
+  calcCumulative,
   calcDoseSummary,
+  cumulativeSeries,
   currentDailyDose,
   latestWeight,
   projectGoalDate,
+  type CalcMode,
   type DoseRecord,
   type WeightRecord,
 } from "../lib/calc";
 import QuickCalc from "./QuickCalc";
+import CumulativeChart from "./CumulativeChart";
 
 interface Props {
   doses: DoseRecord[];
   weights: WeightRecord[];
+  missedDates: string[];
+  calcMode: CalcMode;
   targetMgPerKg: number;
   today: string;
   onGoToRecords: () => void;
@@ -22,12 +27,27 @@ function formatDateJa(dateStr: string): string {
   return `${y}年${m}月${d}日`;
 }
 
-export default function HomeTab({ doses, weights, targetMgPerKg, today, onGoToRecords }: Props) {
-  const summary = calcDoseSummary(doses, today);
+export default function HomeTab({
+  doses,
+  weights,
+  missedDates,
+  calcMode,
+  targetMgPerKg,
+  today,
+  onGoToRecords,
+}: Props) {
+  const summary = calcDoseSummary(doses, today, missedDates);
   const weight = latestWeight(weights);
-  const cumulative = calcCumulativeMgPerKg(summary.totalMg, weight?.weightKg ?? null);
+  const cumulative = calcCumulative(doses, weights, calcMode, today, missedDates);
   const dose = currentDailyDose(doses, today);
-  const projection = projectGoalDate(doses, weight?.weightKg ?? null, targetMgPerKg, today);
+  const projection = projectGoalDate(
+    cumulative,
+    dose,
+    weight?.weightKg ?? null,
+    targetMgPerKg,
+    today
+  );
+  const series = cumulativeSeries(doses, weights, calcMode, today, missedDates);
 
   const percent =
     cumulative != null ? Math.min(100, (cumulative / targetMgPerKg) * 100) : null;
@@ -55,9 +75,12 @@ export default function HomeTab({ doses, weights, targetMgPerKg, today, onGoToRe
       {/* 累積量の大きな表示 */}
       <section className="bg-white rounded-2xl border border-slate-200 p-6 text-center">
         <p className="text-sm text-slate-500 mb-1">現在の累積投与量</p>
-        <p className="text-5xl font-bold tabular-nums">
+        <p className="text-5xl font-bold">
           {cumulative != null ? cumulative.toFixed(1) : "--"}
           <span className="text-lg font-normal text-slate-500 ml-1">mg/kg</span>
+        </p>
+        <p className="text-xs text-slate-400 mt-1">
+          {calcMode === "period" ? "期間ごとの体重で計算（厳密）" : "最新の体重で計算（シンプル）"}
         </p>
 
         {/* 進捗バー */}
@@ -103,36 +126,54 @@ export default function HomeTab({ doses, weights, targetMgPerKg, today, onGoToRe
       </section>
 
       {/* 内訳 */}
-      <section className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className="text-xs text-slate-500">服用総量</p>
-          <p className="text-xl font-bold tabular-nums">
-            {summary.totalMg.toLocaleString()}
-            <span className="text-sm font-normal text-slate-500 ml-0.5">mg</span>
-          </p>
+      <section className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p className="text-xs text-slate-500">服用総量</p>
+            <p className="text-xl font-bold tabular-nums">
+              {summary.totalMg.toLocaleString()}
+              <span className="text-sm font-normal text-slate-500 ml-0.5">mg</span>
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p className="text-xs text-slate-500">治療日数</p>
+            <p className="text-xl font-bold tabular-nums">
+              {summary.totalDays.toLocaleString()}
+              <span className="text-sm font-normal text-slate-500 ml-0.5">日</span>
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p className="text-xs text-slate-500">現在の1日量</p>
+            <p className="text-xl font-bold tabular-nums">
+              {dose != null ? dose : "--"}
+              <span className="text-sm font-normal text-slate-500 ml-0.5">mg/日</span>
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+            <p className="text-xs text-slate-500">計算に使う体重</p>
+            <p className="text-xl font-bold tabular-nums">
+              {weight != null ? weight.weightKg : "--"}
+              <span className="text-sm font-normal text-slate-500 ml-0.5">kg</span>
+            </p>
+          </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className="text-xs text-slate-500">服用日数</p>
-          <p className="text-xl font-bold tabular-nums">
-            {summary.totalDays.toLocaleString()}
-            <span className="text-sm font-normal text-slate-500 ml-0.5">日</span>
+        {summary.missedDays > 0 && (
+          <p className="text-xs text-slate-500 text-center">
+            飲み忘れ {summary.missedDays} 日分は服用総量・累積量から除いています
           </p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className="text-xs text-slate-500">現在の1日量</p>
-          <p className="text-xl font-bold tabular-nums">
-            {dose != null ? dose : "--"}
-            <span className="text-sm font-normal text-slate-500 ml-0.5">mg/日</span>
-          </p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className="text-xs text-slate-500">計算に使う体重</p>
-          <p className="text-xl font-bold tabular-nums">
-            {weight != null ? weight.weightKg : "--"}
-            <span className="text-sm font-normal text-slate-500 ml-0.5">kg</span>
-          </p>
-        </div>
+        )}
       </section>
+
+      {/* 累積量の推移グラフ */}
+      {series.length >= 2 && (
+        <section className="bg-white rounded-2xl border border-slate-200 p-5">
+          <h2 className="font-bold text-base mb-1">累積量の推移</h2>
+          <p className="text-xs text-slate-500 mb-3">
+            治療開始からの累積投与量 (mg/kg)。グラフに触れると日ごとの値が見られます。
+          </p>
+          <CumulativeChart points={series} targetMgPerKg={targetMgPerKg} />
+        </section>
+      )}
 
       {/* かんたん計算機（記録不要のその場計算） */}
       <QuickCalc />
@@ -151,7 +192,7 @@ export default function HomeTab({ doses, weights, targetMgPerKg, today, onGoToRe
           服用総量 (mg) ＝ Σ（各期間の1日量 mg × 服用日数）
         </p>
         <p>
-          本アプリでは、用量を変更した日付と1日量を記録するだけで服用総量を自動計算し、最新の体重で割った累積投与量と目標までの進捗を表示します。
+          本アプリでは、用量を変更した日付と1日量を記録するだけで服用総量を自動計算し、累積投与量と目標までの進捗を表示します。体重が大きく変わった場合は、設定から「期間ごとの体重で計算する」モードに切り替えると、その時々の体重を使ったより厳密な計算ができます。
         </p>
         <p className="text-xs text-slate-500">
           ※ 目標値や治療方針は個人差があります。必ず主治医の指示に従ってください。

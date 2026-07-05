@@ -1,12 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
-  calcDoseSummary,
+  calcCumulative,
   calcCumulativeMgPerKg,
+  calcCumulativeStrict,
+  calcDoseSummary,
   calcQuickCumulative,
+  cumulativeSeries,
   currentDailyDose,
   daysBetween,
   latestWeight,
   projectGoalDate,
+  weightOnDate,
   type DoseRecord,
   type WeightRecord,
 } from "./calc";
@@ -141,36 +145,145 @@ describe("calcQuickCumulative", () => {
 
 describe("projectGoalDate", () => {
   it("残量を現在用量で割った日数後を予測日とする", () => {
-    // 60kg × 120mg/kg = 7200mg 目標。40mg/日を90日 → 3600mg 済み。残 3600mg ÷ 40 = 90日後
-    const records = [dose("2026-01-01", 40)];
-    const result = projectGoalDate(records, 60, 120, "2026-03-31");
+    // 60kg × 120mg/kg = 7200mg 目標。累積 60mg/kg 済み。残 60mg/kg × 60kg = 3600mg ÷ 40 = 90日後
+    const result = projectGoalDate(60, 40, 60, 120, "2026-03-31");
     expect(result).toEqual({ status: "projected", date: "2026-06-29", daysRemaining: 90 });
   });
 
   it("目標到達済みなら reached", () => {
-    const records = [dose("2026-01-01", 40)];
-    // 60kg × 60mg/kg = 3600mg。90日で到達
-    expect(projectGoalDate(records, 60, 60, "2026-03-31")).toEqual({ status: "reached" });
+    expect(projectGoalDate(60, 40, 60, 60, "2026-03-31")).toEqual({ status: "reached" });
   });
 
   it("休薬中（0mg）は予測不能", () => {
-    const records = [dose("2026-01-01", 40), dose("2026-02-01", 0)];
-    expect(projectGoalDate(records, 60, 120, "2026-02-10").status).toBe("unknown");
+    expect(projectGoalDate(20, 0, 60, 120, "2026-02-10").status).toBe("unknown");
   });
 
-  it("体重未登録なら予測不能", () => {
-    expect(projectGoalDate([dose("2026-01-01", 40)], null, 120, "2026-01-10").status).toBe("unknown");
+  it("体重・累積量が不明なら予測不能", () => {
+    expect(projectGoalDate(null, 40, 60, 120, "2026-01-10").status).toBe("unknown");
+    expect(projectGoalDate(20, 40, null, 120, "2026-01-10").status).toBe("unknown");
   });
 
   it("端数は切り上げる", () => {
-    // 50kg × 120 = 6000mg。30mg/日 10日 → 300mg。残 5700 ÷ 30 = 190日ちょうど
-    // 残 5701 相当になるよう 49.5kg… 単純化: 残が割り切れないケース
-    // 60kg × 120 = 7200mg。50mg/日 1日 → 50mg。残 7150 ÷ 50 = 143日ちょうど → 割り切れないケースを作る
-    // 33mg/日 1日 → 33mg。残 7167 ÷ 33 = 217.18… → 218日
-    const result = projectGoalDate([dose("2026-01-01", 33)], 60, 120, "2026-01-01");
+    // 60kg × 120 = 7200mg。累積 0.55mg/kg（33mg ÷ 60kg）。残 7167 ÷ 33 = 217.18… → 218日
+    const result = projectGoalDate(33 / 60, 33, 60, 120, "2026-01-01");
     expect(result.status).toBe("projected");
     if (result.status === "projected") {
       expect(result.daysRemaining).toBe(218);
     }
+  });
+});
+
+describe("飲み忘れ（missedDates）", () => {
+  it("飲み忘れ日は総量から除くが治療日数には含める", () => {
+    // 20mg/日を10日、うち2日飲み忘れ → 総量 160mg、日数 10日
+    const summary = calcDoseSummary([dose("2026-01-01", 20)], "2026-01-10", [
+      "2026-01-03",
+      "2026-01-07",
+    ]);
+    expect(summary.totalMg).toBe(160);
+    expect(summary.totalDays).toBe(10);
+    expect(summary.missedDays).toBe(2);
+  });
+
+  it("休薬期間中・治療期間外・未来の飲み忘れは数えない", () => {
+    const records = [dose("2026-01-01", 20), dose("2026-01-06", 0)];
+    const summary = calcDoseSummary(records, "2026-01-10", [
+      "2025-12-31", // 治療開始前
+      "2026-01-08", // 休薬中
+      "2026-06-01", // 未来
+    ]);
+    expect(summary.totalMg).toBe(100);
+    expect(summary.missedDays).toBe(0);
+  });
+
+  it("同じ日付が重複していても1日として数える", () => {
+    const summary = calcDoseSummary([dose("2026-01-01", 20)], "2026-01-10", [
+      "2026-01-03",
+      "2026-01-03",
+    ]);
+    expect(summary.totalMg).toBe(180);
+    expect(summary.missedDays).toBe(1);
+  });
+});
+
+describe("weightOnDate", () => {
+  const w = (date: string, weightKg: number, id = date): WeightRecord => ({ id, date, weightKg });
+  const weights = [w("2026-01-10", 60), w("2026-02-01", 58)];
+
+  it("その日以前の最新の体重を返す", () => {
+    expect(weightOnDate(weights, "2026-01-20")).toBe(60);
+    expect(weightOnDate(weights, "2026-02-01")).toBe(58);
+    expect(weightOnDate(weights, "2026-03-01")).toBe(58);
+  });
+
+  it("最初の記録より前の日付は最初の体重で代用する", () => {
+    expect(weightOnDate(weights, "2026-01-01")).toBe(60);
+  });
+
+  it("記録なしなら null", () => {
+    expect(weightOnDate([], "2026-01-01")).toBeNull();
+  });
+});
+
+describe("calcCumulativeStrict（期間ごとの体重）", () => {
+  const w = (date: string, weightKg: number, id = date): WeightRecord => ({ id, date, weightKg });
+
+  it("体重変更をまたぐと期間ごとの体重で積み上げる", () => {
+    // 20mg/日: 1/1〜1/10 は 50kg、1/11〜1/20 は 60kg
+    const records = [dose("2026-01-01", 20)];
+    const weights = [w("2026-01-01", 50), w("2026-01-11", 60)];
+    const result = calcCumulativeStrict(records, weights, "2026-01-20");
+    expect(result).toBeCloseTo((20 * 10) / 50 + (20 * 10) / 60);
+  });
+
+  it("体重が一定なら latest モードと一致する", () => {
+    const records = [dose("2026-01-01", 40)];
+    const weights = [w("2026-01-01", 60)];
+    const strict = calcCumulativeStrict(records, weights, "2026-03-31");
+    const latest = calcCumulative(records, weights, "latest", "2026-03-31");
+    expect(strict).toBeCloseTo(60.0);
+    expect(latest).toBeCloseTo(60.0);
+  });
+
+  it("飲み忘れ日は積み上げない", () => {
+    const records = [dose("2026-01-01", 20)];
+    const weights = [w("2026-01-01", 50)];
+    const result = calcCumulativeStrict(records, weights, "2026-01-10", ["2026-01-05"]);
+    expect(result).toBeCloseTo((20 * 9) / 50);
+  });
+
+  it("記録がなければ null", () => {
+    expect(calcCumulativeStrict([], [w("2026-01-01", 50)], "2026-01-10")).toBeNull();
+    expect(calcCumulativeStrict([dose("2026-01-01", 20)], [], "2026-01-10")).toBeNull();
+  });
+});
+
+describe("cumulativeSeries", () => {
+  const w = (date: string, weightKg: number, id = date): WeightRecord => ({ id, date, weightKg });
+
+  it("開始日から today まで1日1点、単調増加の系列を返す", () => {
+    const records = [dose("2026-01-01", 30)];
+    const weights = [w("2026-01-01", 60)];
+    const series = cumulativeSeries(records, weights, "latest", "2026-01-10");
+    expect(series).toHaveLength(10);
+    expect(series[0]).toEqual({ date: "2026-01-01", mgPerKg: 30 / 60 });
+    expect(series[9].date).toBe("2026-01-10");
+    expect(series[9].mgPerKg).toBeCloseTo(300 / 60);
+    for (let i = 1; i < series.length; i++) {
+      expect(series[i].mgPerKg).toBeGreaterThanOrEqual(series[i - 1].mgPerKg);
+    }
+  });
+
+  it("休薬期間は横ばいになる", () => {
+    const records = [dose("2026-01-01", 20), dose("2026-01-06", 0)];
+    const weights = [w("2026-01-01", 50)];
+    const series = cumulativeSeries(records, weights, "latest", "2026-01-10");
+    expect(series[4].mgPerKg).toBeCloseTo(100 / 50);
+    expect(series[9].mgPerKg).toBeCloseTo(100 / 50);
+  });
+
+  it("記録がなければ空配列", () => {
+    expect(cumulativeSeries([], [w("2026-01-01", 50)], "latest", "2026-01-10")).toEqual([]);
+    expect(cumulativeSeries([dose("2026-01-01", 20)], [], "latest", "2026-01-10")).toEqual([]);
   });
 });

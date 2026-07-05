@@ -4,7 +4,8 @@ import { exportDataJson, parseImportedJson, DEFAULT_DATA, type AppData } from ".
 const sampleData: AppData = {
   doses: [{ id: "d1", startDate: "2026-01-01", doseMgPerDay: 20 }],
   weights: [{ id: "w1", date: "2026-01-01", weightKg: 60.5 }],
-  settings: { targetMgPerKg: 130 },
+  missedDates: ["2026-01-05", "2026-01-08"],
+  settings: { targetMgPerKg: 130, calcMode: "period" },
   disclaimerAccepted: true,
 };
 
@@ -16,6 +17,7 @@ describe("exportDataJson / parseImportedJson", () => {
     if (result.ok) {
       expect(result.data.doses).toEqual(sampleData.doses);
       expect(result.data.weights).toEqual(sampleData.weights);
+      expect(result.data.missedDates).toEqual(sampleData.missedDates);
       expect(result.data.settings).toEqual(sampleData.settings);
       expect(result.data.disclaimerAccepted).toBe(true);
     }
@@ -70,12 +72,45 @@ describe("exportDataJson / parseImportedJson", () => {
     }
   });
 
-  it("settings が欠けていればデフォルト目標値を使う", () => {
+  it("settings が欠けていればデフォルト値を使う", () => {
     const json = JSON.stringify({ app: "isotretinoin-tracker", doses: [], weights: [] });
     const result = parseImportedJson(json);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.settings.targetMgPerKg).toBe(DEFAULT_DATA.settings.targetMgPerKg);
+      expect(result.data.settings.calcMode).toBe("latest");
+      expect(result.data.missedDates).toEqual([]);
+    }
+  });
+
+  it("旧バージョン（missedDates なし）のファイルも読み込める", () => {
+    const json = JSON.stringify({
+      app: "isotretinoin-tracker",
+      version: 1,
+      doses: [{ id: "d1", startDate: "2026-01-01", doseMgPerDay: 20 }],
+      weights: [],
+      settings: { targetMgPerKg: 120 },
+    });
+    const result = parseImportedJson(json);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.doses).toHaveLength(1);
+      expect(result.data.missedDates).toEqual([]);
+      expect(result.data.settings.calcMode).toBe("latest");
+    }
+  });
+
+  it("不正な missedDates はスキップ・重複は除去する", () => {
+    const json = JSON.stringify({
+      app: "isotretinoin-tracker",
+      doses: [],
+      weights: [],
+      missedDates: ["2026-01-05", "2026-01-05", "1月5日", 123],
+    });
+    const result = parseImportedJson(json);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.missedDates).toEqual(["2026-01-05"]);
     }
   });
 });

@@ -1,12 +1,16 @@
-import type { DoseRecord, WeightRecord } from "./calc";
+import type { CalcMode, DoseRecord, WeightRecord } from "./calc";
 
 export interface AppSettings {
   targetMgPerKg: number;
+  /** 累積量の計算モード（latest: 最新体重 / period: 期間ごとの体重） */
+  calcMode: CalcMode;
 }
 
 export interface AppData {
   doses: DoseRecord[];
   weights: WeightRecord[];
+  /** 飲み忘れた日 (YYYY-MM-DD) の一覧 */
+  missedDates: string[];
   settings: AppSettings;
   disclaimerAccepted: boolean;
 }
@@ -14,11 +18,22 @@ export interface AppData {
 export const DEFAULT_DATA: AppData = {
   doses: [],
   weights: [],
-  settings: { targetMgPerKg: 120 },
+  missedDates: [],
+  settings: { targetMgPerKg: 120, calcMode: "latest" },
   disclaimerAccepted: false,
 };
 
 const STORAGE_KEY = "isotretinoin-tracker-v1";
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseCalcMode(value: unknown): CalcMode {
+  return value === "period" ? "period" : "latest";
+}
+
+function parseMissedDates(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((d): d is string => typeof d === "string" && DATE_RE.test(d)))];
+}
 
 export function loadData(): AppData {
   try {
@@ -28,11 +43,13 @@ export function loadData(): AppData {
     return {
       doses: Array.isArray(parsed.doses) ? parsed.doses : [],
       weights: Array.isArray(parsed.weights) ? parsed.weights : [],
+      missedDates: parseMissedDates(parsed.missedDates),
       settings: {
         targetMgPerKg:
           typeof parsed.settings?.targetMgPerKg === "number" && parsed.settings.targetMgPerKg > 0
             ? parsed.settings.targetMgPerKg
             : DEFAULT_DATA.settings.targetMgPerKg,
+        calcMode: parseCalcMode(parsed.settings?.calcMode),
       },
       disclaimerAccepted: parsed.disclaimerAccepted === true,
     };
@@ -60,7 +77,7 @@ export function clearData(): void {
 // ---- エクスポート / インポート（機種変更・バックアップ用） ----
 
 const EXPORT_APP_ID = "isotretinoin-tracker";
-const EXPORT_VERSION = 1;
+const EXPORT_VERSION = 2;
 
 export function exportDataJson(data: AppData): string {
   return JSON.stringify(
@@ -70,6 +87,7 @@ export function exportDataJson(data: AppData): string {
       exportedAt: new Date().toISOString(),
       doses: data.doses,
       weights: data.weights,
+      missedDates: data.missedDates,
       settings: data.settings,
     },
     null,
@@ -78,8 +96,6 @@ export function exportDataJson(data: AppData): string {
 }
 
 export type ImportResult = { ok: true; data: AppData } | { ok: false; error: string };
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** エクスポートしたJSON文字列を検証しつつ AppData に戻す */
 export function parseImportedJson(json: string): ImportResult {
@@ -150,7 +166,13 @@ export function parseImportedJson(json: string): ImportResult {
 
   return {
     ok: true,
-    data: { doses, weights, settings: { targetMgPerKg }, disclaimerAccepted: true },
+    data: {
+      doses,
+      weights,
+      missedDates: parseMissedDates(obj.missedDates),
+      settings: { targetMgPerKg, calcMode: parseCalcMode(settings?.calcMode) },
+      disclaimerAccepted: true,
+    },
   };
 }
 

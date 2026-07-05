@@ -11,6 +11,7 @@ import {
 } from "../lib/calc";
 import QuickCalc from "./QuickCalc";
 import CumulativeChart from "./CumulativeChart";
+import FaqSection from "./FaqSection";
 
 interface Props {
   doses: DoseRecord[];
@@ -250,6 +251,51 @@ export default function HomeTab({
         </p>
         <p className="text-xs text-slate-500">
           ※ 目標値や治療方針は個人差があります。必ず主治医の指示に従ってください。
+        </p>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          出典:{" "}
+          <a
+            href="https://pubmed.ncbi.nlm.nih.gov/26187395/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            Evaluation of Evidence for Acne Remission With Oral Isotretinoin Cumulative Dosing of
+            120-150 mg/kg (PubMed)
+          </a>
+          {" / "}
+          <a
+            href="https://pubmed.ncbi.nlm.nih.gov/26471145/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            Making sense of the effects of the cumulative dose of isotretinoin in acne vulgaris
+            (PubMed)
+          </a>
+        </p>
+      </section>
+
+      {/* よくある質問 */}
+      <FaqSection />
+
+      {/* 運営者情報 */}
+      <section className="bg-white rounded-2xl border border-slate-200 p-5 text-sm leading-relaxed text-slate-700 space-y-3">
+        <h2 className="font-bold text-base">このアプリについて（運営者情報）</h2>
+        <p>
+          本アプリは、イソトレチノイン服用中の累積投与量の管理が煩雑だったことをきっかけに、個人が開発・運営している無料の計算補助ツールです。広告はなく、利用データの収集も行っていません。
+        </p>
+        <p className="text-xs text-slate-500">
+          記載内容は医師の監修を受けたものではありません。計算結果や解説は参考情報であり、診断・治療方針の決定には使用できません。服用に関する判断は必ず主治医・薬剤師にご相談ください。誤りのご指摘・ご要望は
+          <a
+            href="https://github.com/Fujita-Yuto/isotretinoin-dose-tracker"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            GitHubリポジトリ
+          </a>
+          までお寄せください。
         </p>
       </section>
     </div>

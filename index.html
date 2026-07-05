@@ -23,9 +23,125 @@
     <meta property="og:locale" content="ja_JP" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>イソトレチノイン累積投与量計算 | 服用記録・進捗管理ツール</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "累積投与量（積算量）とは何ですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "治療開始からのイソトレチノインの総服用量 (mg) を体重 (kg) で割った値です。単位は mg/kg で、治療終了の目安として広く使われています。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "目標の120〜150mg/kgには根拠がありますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "従来、累積120〜150mg/kgに達すると再発率が下がると報告されてきました。ただし近年はこの範囲の根拠の強さを疑問視する研究もあり、低用量でも十分という報告も出ています。目標値は必ず主治医と相談して決めてください。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "体重60kg・1日40mgの場合、120mg/kgまで何ヶ月かかりますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "必要な総量は 120 × 60 = 7,200mg。1日40mgなら 7,200 ÷ 40 = 180日、約6ヶ月です。本アプリでは服用記録から自動で到達予測日を計算できます。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "飲み忘れた場合はどうすればいいですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "自己判断で2回分をまとめて飲むことは避け、対応は医師・薬剤師に確認してください。本アプリではカレンダーで飲み忘れをタップして記録すると、その分が累積量の計算から自動的に除外されます。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "入力したデータはどこに保存されますか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "お使いの端末のブラウザ内（localStorage）にのみ保存され、サーバーには一切送信されません。機種変更の際は設定画面のエクスポート機能でファイルとして持ち出せます。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "目標の累積量に到達したら治療をやめてもいいですか？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "本アプリで治療終了を判断することはできません。累積量はあくまで目安の一つであり、治療の終了・継続は必ず主治医とご相談ください。"
+            }
+          }
+        ]
+      }
+    </script>
+    <style>
+      /* JS無効環境・クローラー向けの静的コンテンツ用（React起動後は消える） */
+      #prerender {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 24px 16px;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: #1e293b;
+        line-height: 1.8;
+      }
+      #prerender h1 { font-size: 1.25rem; }
+      #prerender h2 { font-size: 1.05rem; margin-top: 1.5em; }
+      #prerender .formula { background: #f1f5f9; border-radius: 8px; padding: 12px; font-size: 0.85rem; }
+      #prerender .note { color: #64748b; font-size: 0.85rem; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- プリレンダリングされた静的コンテンツ。React 起動時にアプリ本体へ置き換わる -->
+      <div id="prerender">
+        <h1>イソトレチノイン累積投与量計算 | 服用記録・進捗管理ツール</h1>
+        <p>
+          イソトレチノイン（アキュテイン、ロアキュタン等）を服用中の方向けに、累積投与量（mg/kg）を自動計算できる無料ツールです。服用記録と体重を入力するだけで、現在の累積量・目標までの進捗・到達予測日を表示します。登録不要・広告なし・データは端末内にのみ保存されます。
+        </p>
+        <p class="note">このページの利用にはJavaScriptが必要です。ブラウザの設定をご確認ください。</p>
+
+        <h2>イソトレチノインの累積投与量とは</h2>
+        <p>
+          イソトレチノインの治療では、体重あたりの累積投与量（mg/kg）が治療終了の目安として使われます。一般に120〜150mg/kgが目標とされ、この量に達すると再発率が下がると報告されています。
+        </p>
+        <p class="formula">
+          累積投与量 (mg/kg) ＝ 服用総量 (mg) ÷ 体重 (kg)<br />
+          服用総量 (mg) ＝ Σ（各期間の1日量 mg × 服用日数）
+        </p>
+
+        <h2>よくある質問</h2>
+        <h3>累積投与量（積算量）とは何ですか？</h3>
+        <p>治療開始からのイソトレチノインの総服用量 (mg) を体重 (kg) で割った値です。単位は mg/kg で、治療終了の目安として広く使われています。</p>
+        <h3>目標の120〜150mg/kgには根拠がありますか？</h3>
+        <p>従来、累積120〜150mg/kgに達すると再発率が下がると報告されてきました。ただし近年はこの範囲の根拠の強さを疑問視する研究もあり、低用量でも十分という報告も出ています。目標値は必ず主治医と相談して決めてください。</p>
+        <h3>体重60kg・1日40mgの場合、120mg/kgまで何ヶ月かかりますか？</h3>
+        <p>必要な総量は 120 × 60 = 7,200mg。1日40mgなら 7,200 ÷ 40 = 180日、約6ヶ月です。本アプリでは服用記録から自動で到達予測日を計算できます。</p>
+        <h3>飲み忘れた場合はどうすればいいですか？</h3>
+        <p>自己判断で2回分をまとめて飲むことは避け、対応は医師・薬剤師に確認してください。本アプリではカレンダーで飲み忘れをタップして記録すると、その分が累積量の計算から自動的に除外されます。</p>
+        <h3>入力したデータはどこに保存されますか？</h3>
+        <p>お使いの端末のブラウザ内（localStorage）にのみ保存され、サーバーには一切送信されません。機種変更の際は設定画面のエクスポート機能でファイルとして持ち出せます。</p>
+        <h3>目標の累積量に到達したら治療をやめてもいいですか？</h3>
+        <p>本アプリで治療終了を判断することはできません。累積量はあくまで目安の一つであり、治療の終了・継続は必ず主治医とご相談ください。</p>
+
+        <h2>このアプリについて（運営者情報）</h2>
+        <p>
+          本アプリは、イソトレチノイン服用中の累積投与量の管理が煩雑だったことをきっかけに、個人が開発・運営している無料の計算補助ツールです。記載内容は医師の監修を受けたものではありません。服用に関する判断は必ず主治医・薬剤師にご相談ください。
+        </p>
+        <p class="note">
+          出典:
+          <a href="https://pubmed.ncbi.nlm.nih.gov/26187395/">Evaluation of Evidence for Acne Remission With Oral Isotretinoin Cumulative Dosing of 120-150 mg/kg (PubMed)</a> /
+          <a href="https://pubmed.ncbi.nlm.nih.gov/26471145/">Making sense of the effects of the cumulative dose of isotretinoin in acne vulgaris (PubMed)</a>
+        </p>
+        <p class="note">
+          ⚠️ 本アプリは計算補助ツールであり、医療アドバイスではありません。服用は必ず医師の指導のもとで行ってください。
+        </p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

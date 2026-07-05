@@ -199,6 +199,24 @@ export default function SettingsTab({
       </section>
 
       <section className="space-y-3">
+        <h2 className="font-bold text-lg">ホーム画面に追加（アプリとして使う）</h2>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 text-sm text-slate-700 space-y-2 leading-relaxed">
+          <p className="text-xs text-slate-500">
+            スマホのホーム画面に追加すると、アプリのように1タップで開けます。オフラインでも動作します。
+          </p>
+          <p>
+            <span className="font-bold">iPhone（Safari）:</span> 画面下の共有ボタン
+            <span className="mx-1 inline-block border border-slate-300 rounded px-1 text-xs">↑</span>
+            →「ホーム画面に追加」
+          </p>
+          <p>
+            <span className="font-bold">Android（Chrome）:</span> 右上のメニュー（⋮）
+            →「アプリをインストール」または「ホーム画面に追加」
+          </p>
+        </div>
+      </section>
+
+      <section className="space-y-3">
         <h2 className="font-bold text-lg">データ管理</h2>
         <p className="text-xs text-slate-500 leading-relaxed">
           データはこのブラウザ内（localStorage）にのみ保存されており、サーバーには一切送信されません。ブラウザのデータを消去すると記録も失われます。

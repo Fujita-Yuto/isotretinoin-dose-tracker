@@ -7,6 +7,7 @@ const sampleData: AppData = {
   missedDates: ["2026-01-05", "2026-01-08"],
   settings: { targetMgPerKg: 130, calcMode: "period" },
   disclaimerAccepted: true,
+  backupNudgeDismissed: false,
 };
 
 describe("exportDataJson / parseImportedJson", () => {

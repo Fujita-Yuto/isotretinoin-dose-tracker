@@ -19,7 +19,10 @@ interface Props {
   calcMode: CalcMode;
   targetMgPerKg: number;
   today: string;
+  showBackupNudge: boolean;
   onGoToRecords: () => void;
+  onGoToSettings: () => void;
+  onDismissBackupNudge: () => void;
 }
 
 function formatDateJa(dateStr: string): string {
@@ -34,7 +37,10 @@ export default function HomeTab({
   calcMode,
   targetMgPerKg,
   today,
+  showBackupNudge,
   onGoToRecords,
+  onGoToSettings,
+  onDismissBackupNudge,
 }: Props) {
   const summary = calcDoseSummary(doses, today, missedDates);
   const weight = latestWeight(weights);
@@ -51,8 +57,10 @@ export default function HomeTab({
 
   const percent =
     cumulative != null ? Math.min(100, (cumulative / targetMgPerKg) * 100) : null;
+  const targetTotalMg = weight != null ? Math.round(targetMgPerKg * weight.weightKg) : null;
 
   const needsSetup = doses.length === 0 || weight == null;
+  const backupNudgeVisible = showBackupNudge && !needsSetup && summary.totalDays >= 30;
 
   return (
     <div className="space-y-5">
@@ -69,6 +77,29 @@ export default function HomeTab({
           >
             記録画面へ
           </button>
+        </div>
+      )}
+
+      {backupNudgeVisible && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
+          <p className="font-bold mb-1">💾 バックアップをおすすめします</p>
+          <p className="text-xs leading-relaxed text-blue-800">
+            記録が30日分を超えました。機種変更やブラウザのデータ消去で記録が失われないよう、設定からエクスポート（ファイル保存）しておくと安心です。
+          </p>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={onGoToSettings}
+              className="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-lg active:bg-blue-700"
+            >
+              設定でエクスポート
+            </button>
+            <button
+              onClick={onDismissBackupNudge}
+              className="px-4 py-2.5 rounded-lg border border-blue-300 text-blue-700"
+            >
+              閉じる
+            </button>
+          </div>
         </div>
       )}
 
@@ -103,26 +134,49 @@ export default function HomeTab({
               style={{ width: `${percent ?? 0}%` }}
             />
           </div>
+          {targetTotalMg != null && (
+            <p className="text-xs text-slate-500 mt-1.5 tabular-nums">
+              服用総量 {summary.totalMg.toLocaleString()} / 目標 {targetTotalMg.toLocaleString()} mg
+            </p>
+          )}
         </div>
 
         {/* 到達予測 */}
-        <p className="mt-4 text-sm text-slate-600">
-          {projection.status === "reached" && (
-            <span className="text-green-600 font-bold">🎉 目標累積量に到達しています</span>
-          )}
-          {projection.status === "projected" && (
-            <>
-              目標到達予測日:{" "}
-              <span className="font-bold">{formatDateJa(projection.date)}</span>
-              <span className="text-slate-400">（あと約{projection.daysRemaining}日）</span>
-            </>
-          )}
-          {projection.status === "unknown" && (
-            <span className="text-slate-400">
-              到達予測日: --（休薬中または記録が不足しています）
-            </span>
-          )}
-        </p>
+        {projection.status === "reached" ? (
+          <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800 leading-relaxed">
+            <p className="font-bold">🎉 目標累積量に到達しました</p>
+            <p className="text-xs mt-1">
+              治療を終了するかどうかはこのアプリでは判断できません。今後の治療方針は必ず主治医とご相談ください。
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 text-sm text-slate-600">
+            {projection.status === "projected" && (
+              <>
+                <p>
+                  目標到達予測日:{" "}
+                  <span className="font-bold">{formatDateJa(projection.date)}</span>
+                  <span className="text-slate-400">
+                    （あと約{projection.daysRemaining}日
+                    {projection.daysRemaining >= 60 &&
+                      `・約${Math.round(projection.daysRemaining / 30)}ヶ月`}
+                    ）
+                  </span>
+                </p>
+                {dose != null && dose > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    ※ 現在の1日量（{dose}mg/日）が今後も続いた場合の目安です
+                  </p>
+                )}
+              </>
+            )}
+            {projection.status === "unknown" && (
+              <p className="text-slate-400">
+                到達予測日: --（休薬中または記録が不足しています）
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
       {/* 内訳 */}

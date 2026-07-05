@@ -64,7 +64,10 @@ export default function App() {
             calcMode={data.settings.calcMode}
             targetMgPerKg={data.settings.targetMgPerKg}
             today={today}
+            showBackupNudge={!data.backupNudgeDismissed}
             onGoToRecords={() => setTab("records")}
+            onGoToSettings={() => setTab("settings")}
+            onDismissBackupNudge={() => setData((d) => ({ ...d, backupNudgeDismissed: true }))}
           />
         )}
         {tab === "records" && (

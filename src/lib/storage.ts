@@ -13,6 +13,8 @@ export interface AppData {
   missedDates: string[];
   settings: AppSettings;
   disclaimerAccepted: boolean;
+  /** バックアップ促しバナーを閉じたか（この端末のみの設定） */
+  backupNudgeDismissed: boolean;
 }
 
 export const DEFAULT_DATA: AppData = {
@@ -21,6 +23,7 @@ export const DEFAULT_DATA: AppData = {
   missedDates: [],
   settings: { targetMgPerKg: 120, calcMode: "latest" },
   disclaimerAccepted: false,
+  backupNudgeDismissed: false,
 };
 
 const STORAGE_KEY = "isotretinoin-tracker-v1";
@@ -52,6 +55,7 @@ export function loadData(): AppData {
         calcMode: parseCalcMode(parsed.settings?.calcMode),
       },
       disclaimerAccepted: parsed.disclaimerAccepted === true,
+      backupNudgeDismissed: parsed.backupNudgeDismissed === true,
     };
   } catch {
     return DEFAULT_DATA;
@@ -172,6 +176,8 @@ export function parseImportedJson(json: string): ImportResult {
       missedDates: parseMissedDates(obj.missedDates),
       settings: { targetMgPerKg, calcMode: parseCalcMode(settings?.calcMode) },
       disclaimerAccepted: true,
+      // インポートできた＝バックアップ機能を知っているので、促しは不要
+      backupNudgeDismissed: true,
     },
   };
 }
